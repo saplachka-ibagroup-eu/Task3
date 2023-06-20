@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -8,183 +9,200 @@ using System.Windows.Input;
 using Task3.Manager;
 using Task3.Model;
 
-namespace Task3.UI
+namespace Task3.UI;
+
+public class ViewModel : ViewModelBase
 {
-    public class ViewModel : ViewModelBase
+
+    #region Fields
+
+    private readonly ICSVLoader _csvLoader;
+    private readonly IRecordManager _recordManager;
+    private readonly IExportManager _exportManager;
+    private ObservableCollection<Record> _records;
+    private ICommand _importCommand;
+    private ICommand _filterCommand;
+    private ICommand _exportToExcelCommand;
+    private ICommand _exportToXMLCommand;
+    private Record? _criteria;
+
+    #endregion
+
+
+    public ViewModel()
     {
-        private readonly ICSVLoader _csvLoader;
-        private readonly IRecordManager _recordManager;
-        private readonly IExportManager _exportManager;
-        private Record _record;
-        private ObservableCollection<Record> _records;
-        private ICommand _importCommand;
-        private ICommand _filterCommand;
-        private ICommand _exportToExcelCommand;
-        private ICommand _exportToXMLCommand;
+        _csvLoader = new CSVLoader();
+        _recordManager = new RecordManager();
+        _exportManager = new ExportManager();
+    }
 
 
-        public ViewModel()
+    public ObservableCollection<Record> Records
+    {
+        get
         {
-            _csvLoader = new CSVLoader();
-            _recordManager = new RecordManager();
-            _exportManager = new ExportManager();
+            _records ??= new ObservableCollection<Record>();
+            return _records;
         }
-
-
-        public ObservableCollection<Record> Records
+        set
         {
-            get
-            {
-                _records ??= new ObservableCollection<Record>();
-                return _records;
-            }
-            set
-            {
-                _records = value;
-                NotifyPropertyChanged(nameof(Records));
-            }
+            _records = value;
+            NotifyPropertyChanged(nameof(Records));
         }
+    }
 
-        private string _date;
-        public string Date
+    private string _date;
+    public string Date
+    {
+        get
         {
-            get
-            {
-                return _date;
-            }
-            set
-            {
-                _date = value;
-                NotifyPropertyChanged(nameof(Date));
-            }
+            return _date;
         }
-
-        private string _firstName;
-        public string FirstName
+        set
         {
-            get
-            {
-                return _firstName;
-            }
-            set
-            {
-                _firstName = value;
-                NotifyPropertyChanged(nameof(FirstName));
-            }
+            _date = value;
+            NotifyPropertyChanged(nameof(Date));
         }
+    }
 
-        private string _lastName;
-        public string LastName
+    private string _firstName;
+    public string FirstName
+    {
+        get
         {
-            get
-            {
-                return _lastName;
-            }
-            set
-            {
-                _lastName = value;
-                NotifyPropertyChanged(nameof(LastName));
-            }
+            return _firstName;
         }
-
-        private string _surName;
-        public string SurName
+        set
         {
-            get
-            {
-                return _surName;
-            }
-            set
-            {
-                _surName = value;
-                NotifyPropertyChanged(nameof(SurName));
-            }
+            _firstName = value;
+            NotifyPropertyChanged(nameof(FirstName));
         }
+    }
 
-        private string _city;
-        public string City
+    private string _lastName;
+    public string LastName
+    {
+        get
         {
-            get
-            {
-                return _city;
-            }
-            set
-            {
-                _city = value;
-                NotifyPropertyChanged(nameof(City));
-            }
+            return _lastName;
         }
-
-        private string _country;
-        public string Country
+        set
         {
-            get
-            {
-                return _country;
-            }
-            set
-            {
-                _country = value;
-                NotifyPropertyChanged(nameof(Country));
-            }
+            _lastName = value;
+            NotifyPropertyChanged(nameof(LastName));
         }
+    }
 
-        public ICommand ImportCommand
+    private string _surName;
+    public string SurName
+    {
+        get
         {
-            get
+            return _surName;
+        }
+        set
+        {
+            _surName = value;
+            NotifyPropertyChanged(nameof(SurName));
+        }
+    }
+
+    private string _city;
+    public string City
+    {
+        get
+        {
+            return _city;
+        }
+        set
+        {
+            _city = value;
+            NotifyPropertyChanged(nameof(City));
+        }
+    }
+
+    private string _country;
+    public string Country
+    {
+        get
+        {
+            return _country;
+        }
+        set
+        {
+            _country = value;
+            NotifyPropertyChanged(nameof(Country));
+        }
+    }
+
+    public ICommand ImportCommand
+    {
+        get
+        {
+            if (_importCommand == null)
             {
-                if (_importCommand == null)
+                _importCommand = new RelayCommand(param => ImportFileAsync(),
+                    null);
+            }
+            return _importCommand;
+        }
+    }
+
+    public ICommand ExportToExcelCommand
+    {
+        get
+        {
+            if (_exportToExcelCommand == null)
+            {
+                _exportToExcelCommand = new RelayCommand(param => ExportDataAsync(FileType.Excel),
+                    null);
+            }
+            return _exportToExcelCommand;
+        }
+    }
+
+    public ICommand ExportToXMLCommand
+    {
+        get
+        {
+            if (_exportToXMLCommand == null)
+            {
+                _exportToXMLCommand = new RelayCommand(param => ExportDataAsync(FileType.XML),
+                    null);
+            }
+            return _exportToXMLCommand;
+        }
+    }
+
+    public ICommand FilterCommand
+    {
+        get
+        {
+            if (_filterCommand == null)
+            {
+                _filterCommand = new RelayCommand(param =>
                 {
-                    _importCommand = new RelayCommand(param => ImportFileAsync(),
-                        null);
-                }
-                return _importCommand;
+                    _criteria = new()
+                    {
+                        Date = Date,
+                        FirstName = FirstName,
+                        LastName = LastName,
+                        SurName = SurName,
+                        City = City,
+                        Country = Country,
+                    };
+                    ReadDataAsync();
+                },
+                    null);
             }
+            return _filterCommand;
         }
+    }
 
-        public ICommand ExportToExcelCommand
+    private async void ImportFileAsync()
+    {
+        try
         {
-            get
-            {
-                if (_exportToExcelCommand == null)
-                {
-                    _exportToExcelCommand = new RelayCommand(param => ExportData("Excel"),
-                        null);
-                }
-                return _exportToExcelCommand;
-            }
-        }
-
-        public ICommand ExportToXMLCommand
-        {
-            get
-            {
-                if (_exportToXMLCommand == null)
-                {
-                    _exportToXMLCommand = new RelayCommand(param => ExportData("XML"),
-                        null);
-                }
-                return _exportToXMLCommand;
-            }
-        }
-
-        public ICommand FilterCommand
-        {
-            get
-            {
-                if (_filterCommand == null)
-                {
-                    _filterCommand = new RelayCommand(param => ReadData(),
-                        null);
-                }
-                return _filterCommand;
-            }
-        }
-
-        private async void ImportFileAsync()
-        {
-
-
             OpenFileDialog ofd = new OpenFileDialog();
             ofd.Title = "Open csv file";
             ofd.DefaultExt = "*.csv";
@@ -196,18 +214,25 @@ namespace Task3.UI
             {
                 FileInfo fi = new FileInfo(fileName);
                 string csv = fi.FullName;
-                 var records = _csvLoader.ReadCsv(csv);
-                _recordManager.WriteData(records);
-                await ReadData();
+                var records = _csvLoader.ReadCsvAsync(csv);
+                await _recordManager.WriteDataAsync(records);
+                await ReadDataAsync();
             }
         }
-
-
-        private Task ReadData()
+        catch (Exception ex)
         {
-            Records.Clear();
+            MessageBox.Show("Error is " + ex.ToString());
+        }
+    }
 
-            return Task.Run(() =>
+
+    private Task ReadDataAsync()
+    {
+        Records.Clear();
+
+        return Task.Run(() =>
+        {
+            try
             {
                 var records = _recordManager.FindAll(Predicate);
                 foreach (var record in records)
@@ -217,36 +242,52 @@ namespace Task3.UI
                         Records.Add(record);
                     });
                 }
-            });
-        }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error is " + ex.ToString());
+            }
+        });
+    }
 
 
+    private bool Predicate(Record entry)
+    {
+        return (string.IsNullOrEmpty(_criteria?.Date) || entry.Date.Contains(_criteria?.Date))
+            && (string.IsNullOrEmpty(_criteria?.FirstName) || entry.FirstName.Contains(_criteria?.FirstName)) &&
+            (string.IsNullOrEmpty(_criteria?.LastName) || entry.LastName.Contains(_criteria?.LastName)) &&
+            (string.IsNullOrEmpty(_criteria?.SurName) || entry.SurName.Contains(_criteria?.SurName)) &&
+            (string.IsNullOrEmpty(_criteria?.City) || entry.City.Contains(_criteria?.City)) &&
+            (string.IsNullOrEmpty(_criteria?.Country) || entry.Country.Contains(_criteria?.Country));
+    }
 
-        private bool Predicate(Record entry)
+    private Task ExportDataAsync(FileType type)
+    {
+        return Task.Run(() =>
         {
-            return (string.IsNullOrEmpty(Date) || entry.Date.Contains(Date))
-                && (string.IsNullOrEmpty(FirstName) || entry.FirstName.Contains(FirstName)) &&
-                (string.IsNullOrEmpty(LastName) || entry.LastName.Contains(LastName)) &&
-                (string.IsNullOrEmpty(SurName) || entry.SurName.Contains(SurName)) &&
-                (string.IsNullOrEmpty(City) || entry.City.Contains(City)) &&
-                (string.IsNullOrEmpty(Country) || entry.Country.Contains(Country));
-        }
-
-        private Task ExportData(string type) => Task.Run(() =>
+            try
             {
                 List<Record> data = _recordManager.FindAll(Predicate);
-                if (type == "Excel")
-                {
-                    _exportManager.ExportToExcel(data);
 
-                }
-                else
+                switch (type)
                 {
-                    _exportManager.ExportToXML(data);
+                    case FileType.Excel:
+                        _exportManager.ExportToExcel(data);
+                        break;
+                    case FileType.XML:
+                        _exportManager.ExportToXML(data);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException("Unsupported type " + type);
+
                 }
 
                 MessageBox.Show($"Exported to {type}");
-            });
+            }
+            catch (Exception ex) {
+                MessageBox.Show("Error is " + ex.ToString());
+            }
+        });
     }
-
 }
+

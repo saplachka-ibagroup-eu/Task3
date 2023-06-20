@@ -2,22 +2,21 @@
 using System.Configuration;
 using Task3.Model;
 
-namespace Task3
+namespace Task3;
+
+public class ApplicationContext : DbContext
 {
-    public class ApplicationContext : DbContext
+    internal DbSet<Record> Records { get; set; }
+
+    public ApplicationContext()
     {
-        internal DbSet<Record> Records { get; set; }
+        //  Database.EnsureDeleted();
+        Database.EnsureCreated();
+    }
 
-        public ApplicationContext()
-        {
-            //  Database.EnsureDeleted();
-            Database.EnsureCreated();
-        }
-
-        // Configure your database connection string and other options
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseSqlServer(ConfigurationManager.ConnectionStrings["database"].ConnectionString);
-        }
+    // Configure your database connection string and other options
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.UseSqlServer(ConfigurationManager.ConnectionStrings["database"].ConnectionString);
     }
 }
