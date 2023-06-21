@@ -272,10 +272,10 @@ public class ViewModel : ViewModelBase
                 switch (type)
                 {
                     case FileType.Excel:
-                        _exportManager.ExportToExcel(data);
+                        _exportManager.ExportToExcelAsync(data);
                         break;
                     case FileType.XML:
-                        _exportManager.ExportToXML(data);
+                        _exportManager.ExportToXMLAsync(data);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException("Unsupported type " + type);
@@ -284,7 +284,8 @@ public class ViewModel : ViewModelBase
 
                 MessageBox.Show($"Exported to {type}");
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 MessageBox.Show("Error is " + ex.ToString());
             }
         });

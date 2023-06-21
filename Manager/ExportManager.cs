@@ -1,46 +1,58 @@
-﻿using ClosedXML.Excel;
+﻿using OfficeOpenXml;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using Task3.Model;
+using static System.Reflection.Metadata.BlobBuilder;
 
 namespace Task3.Manager;
 
 public class ExportManager : IExportManager
 {
 
-    public void ExportToExcel(List<Record> data)
+    public async Task ExportToExcelAsync(List<Record> data)
     {
 
-        var wb = new XLWorkbook(); //create workbook
-        var ws = wb.Worksheets.Add("Data"); //add worksheet to workbook
+        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+        var file = new FileInfo(@"D:\AddresBook.xlsx");
 
+        DeleteIfExists(file);
 
-        if (data != null && data.Count() > 0)
-        {
-            ws.FirstCell().InsertData(data);
-            ws.Columns().AdjustToContents();
-        }
-
-        wb.SaveAs(@"D:\data.xlsx");
+        using var package = new ExcelPackage(file);
+        var workSheet = package.Workbook.Worksheets.Add("Sheet1");
+        var range = workSheet.Cells.LoadFromCollection(data, true);
+        range.AutoFitColumns();
+        await package.SaveAsync();
 
     }
 
-    public void ExportToXML(List<Record> data)
+    private static void DeleteIfExists(FileInfo file)
     {
-        string savePath = @"D:\AddresBook.xml";
+        if (file.Exists)
+        {
+            file.Delete();
+        }
+    }
 
-        
-            var xmlSavePath = new XElement("TestProgram",
-            from record in data
-            select new XElement("Record", new XAttribute("Id", record.Id),
-                               new XElement("Date", record.Date),
-                               new XElement("FirstName", record.FirstName),
-                               new XElement("LastName", record.LastName),
-                               new XElement("SurName", record.SurName),
-                               new XElement("City", record.City),
-                               new XElement("Country", record.Country)
-                           ));
-            xmlSavePath.Save(savePath);       
+    public async Task ExportToXMLAsync(List<Record> data)
+    {
+        using FileStream fs = new(@"D:\output.xml", FileMode.Create);
+        CancellationTokenSource cts = new();
+
+        var root = new XElement("TestProgram",
+        from record in data
+        select new XElement("Record", new XAttribute("Id", record.Id),
+                           new XElement("Date", record.Date),
+                           new XElement("FirstName", record.FirstName),
+                           new XElement("LastName", record.LastName),
+                           new XElement("SurName", record.SurName),
+                           new XElement("City", record.City),
+                           new XElement("Country", record.Country)
+                       ));
+        await root.SaveAsync(fs, SaveOptions.None, cts.Token);
     }
 }

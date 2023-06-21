@@ -1,10 +1,11 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Task3.Model;
 
 namespace Task3.Manager;
 
 public interface IExportManager
 {
-    void ExportToExcel(List<Record> data);
-    void ExportToXML(List<Record> data);
+    Task ExportToExcelAsync(List<Record> data);
+    Task ExportToXMLAsync(List<Record> data);
 }
